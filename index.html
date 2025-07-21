@@ -44,8 +44,8 @@
             position: relative;
         }
         .card-scene {
-            width: min(75vw, 380px);
-            height: min(60vh, 520px);
+            width: min(75vw, 320px); /* Adjusted for smaller size */
+            height: min(60vh, 450px); /* Adjusted for smaller size */
             perspective: 1200px;
             position: relative;
         }
@@ -62,27 +62,27 @@
             transform: rotateY(180deg);
         }
         .card-face {
-          position: absolute; /* [cite: 14] */
-          width: 100%; /* [cite: 14] */
-          height: 100%; /* [cite: 14] */
-          backface-visibility: hidden; /* [cite: 14] */
-          -webkit-backface-visibility: hidden; /* [cite: 14] */
-          border-radius: 20px; /*  */
-          background-color: var(--card-background-color, #fdfdfd); /* Use CSS variable, fallback to white */
-          box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1); /*  */
-         display: flex; /*  */
-         align-items: center; /*  */
-         justify-content: center; /*  */
-         overflow: hidden; /*  */
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 20px;
+            background-color: var(--card-background-color, #fdfdfd); /* Uses CSS variable for front face */
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
         }
         /* FIX: Ensure front face is completely hidden when flipped */
         .card-face:first-child {
             z-index: 2;
         }
-        .card-back {
-           transform: rotateY(180deg); /* [cite: 17] */
-           background-color: var(--card-background-color-back, #f8f9fa); /* New variable for back, or use the same */
-           z-index: 1; /* [cite: 17] */
+        .card-back { 
+            transform: rotateY(180deg);
+            background-color: var(--card-background-color-back, #f8f9fa); /* Uses CSS variable for back face */
+            z-index: 1;
         }
 
         /* --- Card Stack & Swipe Animation --- */
@@ -164,7 +164,7 @@
             gap: 1rem;
         }
         .small-card {
-            background: var(--card-background-color, rgba(255, 255, 255, 0.95));
+            background: var(--card-background-color, rgba(255, 255, 255, 0.95)); /* Uses CSS variable for small cards */
             border-radius: 15px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
             padding: 0.5rem;
@@ -226,6 +226,22 @@
         }
 
         // --- UTILITY HOOKS & FUNCTIONS ---
+        // Fisher-Yates (Knuth) Shuffle Algorithm
+        function shuffleArray(array) {
+            let currentIndex = array.length, randomIndex;
+
+            // While there remain elements to shuffle.
+            while (currentIndex !== 0) {
+                // Pick a remaining element.
+                randomIndex = Math.floor(Math.random() * currentIndex);
+                currentIndex--;
+
+                // And swap it with the current element.
+                [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+            }
+            return array;
+        }
+
         const useSpeech = () => {
             // FIX: Enhanced language detection with better pinyin recognition
             const detectLanguage = (text) => {
@@ -634,10 +650,12 @@
             const handleCodeUnlock = () => {
                 const deckData = ACCESS_CODES[code];
                 if (deckData) {
+                    // Set CSS variables for card colors based on the unlocked deck's data
                     document.documentElement.style.setProperty('--card-background-color', deckData.cardColor);
-                    document.documentElement.style.setProperty('--card-background-color-back', deckData.cardBackColor || deckData.cardColor); // Fallback to front color if back color isn't defined
+                    document.documentElement.style.setProperty('--card-background-color-back', deckData.cardBackColor || deckData.cardColor); 
+                    
                     const initialDeck = deckData.cards.map(card => ({ ...card, status: 'new', level: 0, key: Math.random() }));
-                    const shuffledDeck = [...initialDeck].sort(() => Math.random() - 0.5);
+                    const shuffledDeck = shuffleArray([...initialDeck]); // Using the Fisher-Yates shuffle
                     setDeck(shuffledDeck);
                     setVisibleCards(shuffledDeck.slice(0, 3));
                     setRememberedCards([]);
@@ -734,7 +752,8 @@
                             {Object.entries(ACCESS_CODES).map(([code, deckData]) => (
                                 <div key={code} onClick={() => onSelectDeck(code)} className="cursor-pointer">
                                     <h3 className="text-white text-center font-bold mb-2">{deckData.title}</h3>
-                                    <StaticSmallCard card={deckData.sampleCard} />
+                                    {/* Ensure StaticSmallCard also gets the color info for its preview */}
+                                    <StaticSmallCard card={{...deckData.sampleCard, cardColor: deckData.cardColor}} />
                                 </div>
                             ))}
                         </div>
