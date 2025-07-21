@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Chinese-Thai Flashcard App</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500&family=Noto+Sans+Thai:wght@300;400;500&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- CORE LAYOUT & APPEARANCE --- */
+        html, body, #root {
+            height: 100%;
+            overflow: hidden;
+        }
+        .animated-bg {
+            background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #f5576c, #4facfe, #00f2fe);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+        }
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .flashcard-page {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            padding: 1rem;
+        }
+        .top-nav { flex-shrink: 0; }
+        .card-scene-wrapper {
+            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .card-scene {
+            width: min(85vw, 380px);
+            height: min(70vh, 520px);
+            perspective: 1200px;
+            position: relative;
+        }
+
+        /* --- Card & Flip Animation --- */
+        .card-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.7s cubic-bezier(0.4, 0.0, 0.2, 1);
+        }
+        .card-container.flipped {
+            transform: rotateY(180deg);
+        }
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            border-radius: 20px;
+            background-color: #fdfdfd;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+        /* FIX: Ensure front face is completely hidden when flipped */
+        .card-face:first-child {
+            z-index: 2;
+        }
+        .card-back { 
+            transform: rotateY(180deg);
+            background-color: #f8f9fa;
+            z-index: 1;
+        }
+
+        /* --- Card Stack & Swipe Animation --- */
+        .card-stack-item {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.4s;
+            touch-action: none;
+        }
+        .card-stack-item[data-index="0"] { z-index: 3; }
+        .card-stack-item[data-index="1"] {
+            transform: scale(0.9) translateY(-30px);
+            z-index: 2;
+        }
+        .card-stack-item[data-index="2"] {
+            transform: scale(0.8) translateY(-60px);
+            opacity: 0.5;
+            z-index: 1;
+        }
+
+        /* --- Card Content & UI Elements --- */
+        .card-content {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            padding: clamp(16px, 5vw, 28px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 1rem;
+        }
+        .chinese-character { 
+            font-size: clamp(2.5rem, 8vw, 4rem); 
+            font-weight: 400; 
+            color: #1f2937; 
+            cursor: pointer; 
+            user-select: none; 
+            font-family: 'PingFang SC', 'Noto Sans SC',  'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', 'SimSun', '宋体', sans-serif;
+        }
+        .pinyin { font-size: clamp(1.2rem, 4vw, 1.6rem); color: #6b7280; cursor: pointer; user-select: none; }
+        .emoji-display { font-size: clamp(2.5rem, 7vw, 3.5rem); }
+        .english-translation { 
+            font-size: clamp(1.4rem, 4.5vw, 1.8rem); 
+            font-weight: 500; 
+            color: #374151; 
+            cursor: pointer; 
+            user-select: none; 
+        }
+        .thai-translation { 
+            font-size: clamp(1.3rem, 4vw, 1.6rem); 
+            color: #6b7280; 
+            cursor: pointer; 
+            user-select: none;
+            font-family: 'Noto Sans Thai', 'Tahoma', 'Arial', sans-serif;
+        }
+        .mobile-button { background: none; border: none; padding: 8px; color: white; opacity: 0.8; transition: all 0.2s ease; }
+        .mobile-button:active { transform: scale(0.9); opacity: 1; }
+        
+        /* --- Collection Page Layout --- */
+        .collection-page {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            padding: 1rem;
+        }
+        .collection-grid-wrapper {
+            flex-grow: 1;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding-top: 1rem;
+        }
+        .collection-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        .small-card {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            padding: 0.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #374151;
+            font-size: 0.7rem;
+            line-height: 1.3;
+            min-height: 150px;
+        }
+        .small-card .chinese-character { font-size: 1.5rem; font-weight: 500; margin-bottom: 0.1rem; }
+        .small-card .pinyin { font-size: 0.8rem; margin-bottom: 0.4rem; color: #6b7280; }
+        .small-card .emoji-display { font-size: 1.1rem; margin-top: 0.2rem; }
+        .small-card .english-translation { font-size: 0.8rem; font-weight: 500; }
+        .small-card .thai-translation { font-size: 0.75rem; color: #6b7280; }
+
+        .flippable-small-card {
+            perspective: 800px;
+            position: relative; 
+            min-height: 150px;
+        }
+        .flippable-small-card .card-container {
+            transition-duration: 0.6s;
+        }
+        
+        /* Other styles */
+        .slide-container{position:relative;width:100%;max-width:300px;height:50px;background-color:rgba(255,255,255,0.2);border-radius:25px;overflow:hidden;box-shadow:inset 0 0 10px rgba(0,0,0,0.1)}.slide-text{position:absolute;width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.8);font-weight:bold;font-size:1rem;pointer-events:none;transition:opacity .3s ease}.slide-button{width:50px;height:50px;background:linear-gradient(135deg,#00f2fe,#4facfe);border-radius:50%;position:absolute;left:0;top:0;display:flex;align-items:center;justify-content:center;cursor:grab;box-shadow:0 5px 15px rgba(0,0,0,0.2);transition:transform .1s ease-out;touch-action:pan-x}.slide-button.unlocked{transform:translateX(calc(100% - 50px));cursor:auto}.slide-fill{height:100%;background:linear-gradient(90deg,#4facfe,#00f2fe);border-radius:25px;width:0;transition:width .1s ease-out}.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background-color:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;visibility:hidden;transition:opacity .3s ease,visibility .3s ease}.modal-overlay.open{opacity:1;visibility:visible}.modal-content{background:linear-gradient(135deg,rgba(255,255,255,0.95) 0%,rgba(248,250,252,0.9) 100%);border-radius:20px;padding:30px;box-shadow:0 20px 40px rgba(0,0,0,0.2);max-width:90vw;width:400px;text-align:center;transform:translateY(-20px);opacity:0;transition:transform .3s ease,opacity .3s ease}.modal-overlay.open .modal-content{transform:translateY(0);opacity:1}.mobile-center{display:flex;align-items:center;justify-content:center;min-height:100vh;min-height:100dvh;width:100%;padding:16px;box-sizing:border-box}
+    </style>
+</head>
+<body class="animated-bg font-sans text-gray-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useCallback } = React;
+
+        // --- DATA & CONFIG ---
+        const TRANSLATIONS={"en-US":{flashcardsCode:"Learn Any Language with Flashcards",slideToUnlock:"slide to unlock",pasteCodePlaceholder:"paste or type your flash card code here...",createNewFlashcardsLink:"Enter new code",collection:"All Decks",backToStudy:"Back to Study",noCollectedCards:"No cards collected yet",rememberedCards:"Remembered Cards",forgottenCards:"Forgotten Cards",landingPageSubtitle:'Enter "LearnChinesewithHelen1295" or "PinyinPractice" to start.'}};
+        const CHINESE_VOCABULARY=[{front:"爸爸\nbà ba",back:"dad\nพ่อ",emoji:"👨‍👧‍👦"},{front:"别\nbié",back:"don't\nอย่า",emoji:"🚫"},{front:"朋友\npéng yǒu",back:"friend\nเพื่อน",emoji:"👫"},{front:"怕\npà",back:"to fear\nกลัว",emoji:"😨"},{front:"妈妈\nmā ma",back:"mom\nแม่",emoji:"👩‍👧‍👦"},{front:"买\nmǎi",back:"to buy\nซื้อ",emoji:"🛒"},{front:"饭\nfàn",back:"meal\nข้าว",emoji:"🍽️"},{front:"富\nfù",back:"rich\nรวย",emoji:"💰"},{front:"奶奶\nnǎi nai",back:"grandmother\nยาย",emoji:"👵"},{front:"你\nnǐ",back:"you\nคุณ",emoji:"👤"},{front:"老\nlǎo",back:"old\nแก่",emoji:"🧓"},{front:"来\nlái",back:"to come\nมา",emoji:"➡️"},{front:"大\ndà",back:"big\nใหญ่",emoji:"📏"},{front:"得\ndé",back:"to get\nได้รับ",emoji:"🏆"},{front:"跳\ntiào",back:"to jump\nกระโดด",emoji:"🤸"},{front:"调\ntiáo",back:"to adjust\nปรับ",emoji:"⚙️"},{front:"猪\nzhū",back:"pig\nหมู",emoji:"🐷"},{front:"住\nzhù",back:"to live\nอาศัย",emoji:"🏠"},{front:"吃\nchī",back:"to eat\nกิน",emoji:"🍽️"},{front:"出\nchū",back:"to go out\nออกไป",emoji:"🚪"},{front:"高\ngāo",back:"high\nสูง",emoji:"📏"},{front:"个\ngè",back:"measure word\nลักษณนาม",emoji:"📊"},{front:"裤\nkù",back:"trousers\nกางเกง",emoji:"👖"},{front:"可以\nkě yǐ",back:"can\nสามารถ",emoji:"✅"},{front:"虎\nhǔ",back:"tiger\nเสือ",emoji:"🐅"},{front:"好\nhǎo",back:"good\nดี",emoji:"👍"},{front:"家\njiā",back:"home\nบ้าน",emoji:"🏡"},{front:"就\njiù",back:"then\nแล้ว",emoji:"⏭️"},{front:"小\nxiǎo",back:"small\nเล็ก",emoji:"🐭"},{front:"喜欢\nxǐ huān",back:"to like\nชอบ",emoji:"❤️"}];
+        const PINYIN_CARDS=[{front:"ang",back:"ang\nFinal compound: 'ahng' sound\nเสียงสระผสม: 'อาง'",emoji:"🗣️"},{front:"ing",back:"ing\nFinal compound: 'eeng' sound\nเสียงสระผสม: 'อิง'",emoji:"🗣️"},{front:"en",back:"en\nFinal compound: 'uhn' sound\nเสียงสระผสม: 'เอิน'",emoji:"🗣️"},{front:"ai",back:"ai\nFinal compound: 'eye' sound\nเสียงสระผสม: 'ไอ'",emoji:"🗣️"},{front:"ao",back:"ao\nFinal compound: 'aow' sound\nเสียงสระผสม: 'เอา'",emoji:"🗣️"}];
+        const ACCESS_CODES={LearnChinesewithHelen1295:{title:"Chinese Vocabulary",cards:CHINESE_VOCABULARY.map(card=>({...card,status:"new"})),sampleCard:{...CHINESE_VOCABULARY[0],status:"new"}},PinyinPractice:{title:"Pinyin Practice",cards:PINYIN_CARDS.map(card=>({...card,status:"new"})),sampleCard:{...PINYIN_CARDS[0],status:"new"}}};
+
+        // --- UTILITY HOOKS & FUNCTIONS ---
+        const useSpeech = () => {
+            // FIX: Enhanced language detection with better pinyin recognition
+            const detectLanguage = (text) => {
+                if (!text) return 'en-US';
+                
+                // Check for Thai characters (Unicode range: 0E00-0E7F)
+                const thaiRegex = /[\u0E00-\u0E7F]/;
+                if (thaiRegex.test(text)) {
+                    console.log(`🇹🇭 Thai detected: "${text}"`);
+                    return 'th-TH';
+                }
+                
+                // Check for Chinese characters (Unicode ranges: 4E00-9FFF, 3400-4DBF, F900-FAFF)
+                const chineseRegex = /[\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF]/;
+                if (chineseRegex.test(text)) {
+                    console.log(`🇨🇳 Chinese characters detected: "${text}"`);
+                    return 'zh-CN';
+                }
+                
+                // Enhanced pinyin detection - more comprehensive patterns
+                const commonPinyinSyllables = [
+                    'ba', 'pa', 'ma', 'fa', 'da', 'ta', 'na', 'la', 'ga', 'ka', 'ha',
+                    'ji', 'qi', 'xi', 'zhi', 'chi', 'shi', 'ri', 'zi', 'ci', 'si',
+                    'ya', 'wa', 'yuan', 'ying', 'yang', 'yong', 'you', 'yan', 'yin',
+                    'ai', 'ei', 'ao', 'ou', 'an', 'en', 'ang', 'eng', 'ong',
+                    'ia', 'ie', 'iao', 'iou', 'ian', 'in', 'iang', 'ing', 'iong',
+                    'ua', 'uo', 'uai', 'ui', 'uan', 'un', 'uang', 'ueng',
+                    'ue', 'uan', 'un'
+                ];
+                
+                // Check if text contains tone marks or pinyin patterns
+                const hasToneMarks = /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/i.test(text);
+                const textLower = text.toLowerCase().trim();
+                const isPinyinSyllable = commonPinyinSyllables.some(syllable => 
+                    textLower === syllable || textLower.includes(syllable)
+                );
+                
+                if (hasToneMarks || isPinyinSyllable) {
+                    console.log(`🎵 Pinyin detected: "${text}"`);
+                    return 'zh-CN';
+                }
+                
+                // Check for space-separated pinyin (like "bà ba")
+                const words = textLower.split(/\s+/);
+                const allWordsPinyin = words.length > 1 && words.every(word => 
+                    commonPinyinSyllables.includes(word) || /[āáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜ]/.test(word)
+                );
+                
+                if (allWordsPinyin) {
+                    console.log(`🎵 Multi-syllable pinyin detected: "${text}"`);
+                    return 'zh-CN';
+                }
+                
+                console.log(`🇺🇸 English/default detected: "${text}"`);
+                return 'en-US';
+            };
+
+            const pronounceText = useCallback(async (text, requestedLang) => {
+                if (!text || !text.trim()) {
+                    console.error("No text to pronounce.");
+                    return;
+                }
+                
+                // FIX: Use smart language detection instead of relying on requestedLang
+                const detectedLang = detectLanguage(text);
+                console.log(`Text: "${text}" | Requested: ${requestedLang} | Detected: ${detectedLang}`);
+                
+                // FIX: For Chinese content (characters OR pinyin), always use external TTS
+                if (detectedLang === 'zh-CN') {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        if (audioContext.state === 'suspended') {
+                            await audioContext.resume();
+                        }
+
+                        const backendUrl = "https://d682f7a4-5681-429e-9c86-22b8329e4b8e-00-liewh2dfj37m.sisko.replit.dev/tts";
+
+                        console.log('🇨🇳 Using external TTS for Chinese content...');
+                        const response = await fetch(backendUrl, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Accept': 'audio/mpeg'
+                            },
+                            body: JSON.stringify({ text, lang: 'zh-CN' })
+                        });
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`TTS request failed with status ${response.status}: ${errorText}`);
+                        }
+
+                        const audioData = await response.arrayBuffer();
+                        if (audioData.byteLength === 0) {
+                            throw new Error('Received empty audio data');
+                        }
+
+                        const audioBuffer = await audioContext.decodeAudioData(audioData);
+                        const source = audioContext.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(audioContext.destination);
+                        source.start(0);
+                        
+                        console.log('✅ Chinese TTS played successfully');
+                        return;
+
+                    } catch (error) {
+                        console.error("❌ External Chinese TTS failed:", error);
+                        // Don't fallback for Chinese - we want the accurate pronunciation
+                        return;
+                    }
+                }
+                
+                // FIX: For Thai content, use external TTS too for better quality
+                if (detectedLang === 'th-TH') {
+                    try {
+                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                        if (audioContext.state === 'suspended') {
+                            await audioContext.resume();
+                        }
+
+                        const backendUrl = "https://d682f7a4-5681-429e-9c86-22b8329e4b8e-00-liewh2dfj37m.sisko.replit.dev/tts";
+
+                        console.log('🇹🇭 Using external TTS for Thai content...');
+                        const response = await fetch(backendUrl, {
+                            method: 'POST',
+                            headers: { 
+                                'Content-Type': 'application/json',
+                                'Accept': 'audio/mpeg'
+                            },
+                            body: JSON.stringify({ text, lang: 'th-TH' })
+                        });
+
+                        if (!response.ok) {
+                            const errorText = await response.text();
+                            throw new Error(`TTS request failed with status ${response.status}: ${errorText}`);
+                        }
+
+                        const audioData = await response.arrayBuffer();
+                        if (audioData.byteLength === 0) {
+                            throw new Error('Received empty audio data');
+                        }
+
+                        const audioBuffer = await audioContext.decodeAudioData(audioData);
+                        const source = audioContext.createBufferSource();
+                        source.buffer = audioBuffer;
+                        source.connect(audioContext.destination);
+                        source.start(0);
+                        
+                        console.log('✅ Thai TTS played successfully');
+                        return;
+
+                    } catch (error) {
+                        console.error("❌ External Thai TTS failed:", error);
+                        // Fallback to browser for Thai if external fails
+                    }
+                }
+                
+                // Use browser speech synthesis for English or as fallback
+                if ('speechSynthesis' in window) {
+                    try {
+                        speechSynthesis.cancel();
+                        
+                        const utterance = new SpeechSynthesisUtterance(text);
+                        utterance.lang = detectedLang;
+                        utterance.rate = 0.8;
+                        utterance.volume = 1.0;
+                        
+                        utterance.onstart = () => console.log(`🔊 Browser speech started (${detectedLang})`);
+                        utterance.onend = () => console.log('✅ Browser speech ended');
+                        utterance.onerror = (e) => console.error('❌ Browser speech error:', e);
+                        
+                        speechSynthesis.speak(utterance);
+                        return;
+                    } catch (error) {
+                        console.error("❌ Browser speech synthesis failed:", error);
+                    }
+                }
+                
+                console.error("❌ No speech synthesis method available");
+            }, []);
+
+            return { pronounceText };
+        };
+
+        const Modal = ({ isOpen, onClose, title, message, children }) => {
+            if (!isOpen) return null;
+            return (
+                <div className={`modal-overlay ${isOpen ? 'open' : ''}`} onClick={onClose}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        {title && <h3 className="text-2xl font-bold mb-4 text-gray-800">{title}</h3>}
+                        {message && <p className="text-gray-700 mb-6">{message}</p>}
+                        {children}
+                        <button onClick={onClose} className="mt-4 px-6 py-3 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition duration-300">Close</button>
+                    </div>
+                </div>
+            );
+        };
+        const SlideToUnlock = ({ onUnlock }) => {
+            const sliderRef = useRef(null);
+            const [isDragging, setIsDragging] = useState(false);
+            const [currentX, setCurrentX] = useState(0);
+            const [unlocked, setUnlocked] = useState(false);
+            const [maxTranslateX, setMaxTranslateX] = useState(0);
+            useEffect(() => {
+                const calculateMaxTranslateX = () => {
+                    if (sliderRef.current) {
+                        setMaxTranslateX(sliderRef.current.offsetWidth - 50);
+                    }
+                };
+                calculateMaxTranslateX();
+                window.addEventListener('resize', calculateMaxTranslateX);
+                return () => window.removeEventListener('resize', calculateMaxTranslateX);
+            }, []);
+            const handleStart = (clientX) => {
+                if (unlocked) return;
+                setIsDragging(true);
+                sliderRef.current.startX = clientX;
+            };
+            const handleMove = (clientX) => {
+                if (!isDragging || unlocked) return;
+                const deltaX = clientX - sliderRef.current.startX;
+                const newX = Math.max(0, Math.min(deltaX, maxTranslateX));
+                setCurrentX(newX);
+                if (newX >= maxTranslateX - 2) {
+                    setUnlocked(true);
+                    setIsDragging(false);
+                    onUnlock();
+                }
+            };
+            const handleEnd = () => {
+                if (unlocked) return;
+                if (isDragging) {
+                    setIsDragging(false);
+                    setCurrentX(0);
+                }
+            };
+            return (
+                <div ref={sliderRef} className="slide-container" onMouseDown={(e) => handleStart(e.clientX)} onMouseMove={(e) => handleMove(e.clientX)} onMouseUp={handleEnd} onMouseLeave={handleEnd} onTouchStart={(e) => handleStart(e.touches[0].clientX)} onTouchMove={(e) => handleMove(e.touches[0].clientX)} onTouchEnd={handleEnd}>
+                    <div className="slide-fill" style={{ width: `${currentX + 25}px` }} />
+                    <div className={`slide-button ${unlocked ? 'unlocked' : ''}`} style={{ transform: `translateX(${currentX}px)` }}>
+                        <i className={`fas ${unlocked ? 'fa-check' : 'fa-chevron-right'}`} />
+                    </div>
+                    <div className={`slide-text ${unlocked || currentX > 10 ? 'opacity-0' : 'opacity-100'}`}>{TRANSLATIONS["en-US"].slideToUnlock}</div>
+                </div>
+            );
+        };
+        
+        // --- REBUILT & FIXED: Flashcard Component ---
+        const Flashcard = ({ card, onSwipe, index }) => {
+            const [isFlipped, setIsFlipped] = useState(false);
+            const cardRef = useRef(null);
+            const touchState = useRef({ startX: 0, startY: 0, startTime: 0, isDragging: false, deltaX: 0 }).current;
+            const { pronounceText } = useSpeech();
+
+            useEffect(() => { setIsFlipped(false); }, [card]);
+
+            const handlePointerDown = (e) => {
+                if (index !== 0) return;
+                touchState.isDragging = true;
+                touchState.startX = e.clientX;
+                touchState.startY = e.clientY;
+                touchState.startTime = Date.now();
+                cardRef.current.style.transition = 'none';
+                e.target.setPointerCapture(e.pointerId);
+            };
+
+            const handlePointerMove = (e) => {
+                if (!touchState.isDragging || index !== 0) return;
+                touchState.deltaX = e.clientX - touchState.startX;
+                const deltaY = e.clientY - touchState.startY;
+                if (Math.abs(touchState.deltaX) < Math.abs(deltaY) && Date.now() - touchState.startTime > 100) {
+                    touchState.isDragging = false;
+                    return;
+                }
+                const rotation = touchState.deltaX * 0.1;
+                cardRef.current.style.transformOrigin = `50% ${window.innerHeight}px`;
+                cardRef.current.style.transform = `translateX(${touchState.deltaX}px) rotate(${rotation}deg)`;
+            };
+
+            const handlePointerUp = (e) => {
+                if (!touchState.isDragging || index !== 0) return;
+                touchState.isDragging = false;
+                e.target.releasePointerCapture(e.pointerId);
+                const touchDuration = Date.now() - touchState.startTime;
+
+                // FIX: More reliable flip detection - check if it's a quick tap without much movement
+                if (touchDuration < 300 && Math.abs(touchState.deltaX) < 20) {
+                    const isTextArea = e.target.closest('.chinese-character, .pinyin, .english-translation, .thai-translation');
+                    if (!isTextArea) {
+                        console.log('🔄 Card flip triggered');
+                        setIsFlipped(prev => !prev);
+                    } else {
+                        console.log('🔊 Text click detected, no flip');
+                    }
+                } else {
+                    const swipeThreshold = window.innerWidth * 0.35;
+                    if (Math.abs(touchState.deltaX) > swipeThreshold) {
+                        const direction = touchState.deltaX > 0 ? 'right' : 'left';
+                        console.log(`🏃 Swipe ${direction} detected`);
+                        cardRef.current.style.transition = 'transform 0.4s';
+                        cardRef.current.style.transform = `translateX(${direction === 'right' ? '200%' : '-200%'}) rotate(${direction === 'right' ? 45 : -45}deg)`;
+                        setTimeout(() => onSwipe(direction), 100);
+                    } else {
+                       cardRef.current.style.transition = 'transform 0.4s cubic-bezier(0.25, 0.8, 0.25, 1)';
+                       cardRef.current.style.transform = '';
+                    }
+                }
+            };
+            
+            // FIX: Remove language parameter since we'll detect it automatically
+            const handlePronounce = (e, text) => {
+                e.stopPropagation(); // Prevent card flip
+                console.log(`🎯 Pronunciation requested for: "${text}"`);
+                pronounceText(text); // No lang parameter needed
+            };
+
+            const frontParts = (card.front || '').split('\n').map(s => s.trim());
+            const chineseChar = frontParts[0] || '';
+            const pinyin = frontParts[1] || '';
+
+            const backParts = (card.back || '').split('\n').map(s => s.trim());
+            const englishTranslation = backParts[0] || '';
+            const thaiTranslation = backParts[1] || '';
+
+            return (
+                <div ref={cardRef} className="card-stack-item" data-index={index} onPointerDown={handlePointerDown} onPointerMove={handlePointerMove} onPointerUp={handlePointerUp}>
+                    <div className={`card-container ${isFlipped ? 'flipped' : ''}`}>
+                        <div className="card-face">
+                            <div className="card-content">
+                                {chineseChar && <div className="chinese-character" onClick={(e) => handlePronounce(e, chineseChar)}>{chineseChar}</div>}
+                                {pinyin && <div className="pinyin" onClick={(e) => handlePronounce(e, pinyin)}>{pinyin}</div>}
+                                {card.emoji && <div className="emoji-display">{card.emoji}</div>}
+                            </div>
+                        </div>
+                        <div className="card-face card-back">
+                            <div className="card-content">
+                                {englishTranslation && <div className="english-translation" onClick={(e) => handlePronounce(e, englishTranslation)}>{englishTranslation}</div>}
+                                {thaiTranslation && <div className="thai-translation" onClick={(e) => handlePronounce(e, thaiTranslation)}>{thaiTranslation}</div>}
+                                {card.emoji && <div className="emoji-display">{card.emoji}</div>}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        const FlippableSmallCard = ({ card, onLongPress }) => {
+            const [isFlipped, setIsFlipped] = useState(false);
+            const longPressTimeout = useRef(null);
+
+            const handlePointerDown = () => { longPressTimeout.current = setTimeout(() => onLongPress(card), 500); };
+            const handlePointerUp = () => clearTimeout(longPressTimeout.current);
+            const handleClick = () => {
+                setIsFlipped(true);
+                setTimeout(() => setIsFlipped(false), 2000);
+            };
+
+            const frontParts = (card.front || '').split('\n').map(s => s.trim());
+            const backParts = (card.back || '').split('\n').map(s => s.trim());
+
+            return (
+                <div className="flippable-small-card" onClick={handleClick} onPointerDown={handlePointerDown} onPointerUp={handlePointerUp} onPointerLeave={handlePointerUp}>
+                    <div className={`card-container ${isFlipped ? 'flipped' : ''}`}>
+                        <div className="card-face small-card">
+                            <div className="chinese-character">{frontParts[0] || ''}</div>
+                            <div className="pinyin">{frontParts[1] || ''}</div>
+                            <div className="emoji-display">{card.emoji}</div>
+                        </div>
+                        <div className="card-face card-back small-card">
+                            <div className="english-translation">{backParts[0] || ''}</div>
+                            <div className="thai-translation">{backParts[1] || ''}</div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        const StaticSmallCard = ({ card }) => {
+            const frontParts = (card.front || '').split('\n').map(s => s.trim());
+            const backParts = (card.back || '').split('\n').map(s => s.trim());
+            return (
+                <div className="small-card">
+                    <div className="chinese-character">{frontParts[0] || ''}</div>
+                    <div className="pinyin">{frontParts[1] || ''}</div>
+                    <div className="english-translation">{backParts[0] || ''}</div>
+                    <div className="thai-translation">{backParts[1] || ''}</div>
+                    <div className="emoji-display">{card.emoji}</div>
+                </div>
+            );
+        };
+
+        const removeCardFromListByFront = (list, cardToRemove) => list.filter(c => c.front !== cardToRemove.front);
+
+        const App = () => {
+            const [currentPage, setCurrentPage] = useState('landing');
+            const [deck, setDeck] = useState([]);
+            const [visibleCards, setVisibleCards] = useState([]);
+            const [rememberedCards, setRememberedCards] = useState([]);
+            const [forgottenCards, setForgottenCards] = useState([]);
+            const [showErrorModal, setShowErrorModal] = useState(false);
+            const [errorMessage, setErrorMessage] = useState('');
+            const [code, setCode] = useState('');
+            const [selectedDeckCode, setSelectedDeckCode] = useState(null);
+
+            const handleCodeUnlock = () => {
+                const deckData = ACCESS_CODES[code];
+                if (deckData) {
+                    const initialDeck = deckData.cards.map(card => ({ ...card, status: 'new', level: 0, key: Math.random() }));
+                    const shuffledDeck = [...initialDeck].sort(() => Math.random() - 0.5);
+                    setDeck(shuffledDeck);
+                    setVisibleCards(shuffledDeck.slice(0, 3));
+                    setRememberedCards([]);
+                    setForgottenCards([]);
+                    setCurrentPage('flashcards');
+                } else {
+                    setErrorMessage("Invalid code. Please try again.");
+                    setShowErrorModal(true);
+                }
+            };
+            
+            const handleSwipe = useCallback((direction) => {
+                if (visibleCards.length === 0) return;
+                const swipedCard = visibleCards[0];
+                const newDeck = deck.slice(1);
+                let nextRemembered = [...rememberedCards];
+                let nextForgotten = [...forgottenCards];
+                nextRemembered = removeCardFromListByFront(nextRemembered, swipedCard);
+                nextForgotten = removeCardFromListByFront(nextForgotten, swipedCard);
+                let deckUpdate = [...newDeck];
+                if (direction === 'left') {
+                    swipedCard.level = Math.max(0, swipedCard.level - 1);
+                    nextForgotten.push(swipedCard);
+                    const reinsertIndex = Math.min(5, deckUpdate.length);
+                    deckUpdate.splice(reinsertIndex, 0, swipedCard);
+                } else {
+                    swipedCard.level += 1;
+                    nextRemembered.push(swipedCard);
+                    if (swipedCard.level < 2) {
+                        deckUpdate.push(swipedCard);
+                    }
+                }
+                setDeck(deckUpdate);
+                setRememberedCards(nextRemembered);
+                setForgottenCards(nextForgotten);
+                setVisibleCards(deckUpdate.slice(0, 3));
+            }, [deck, visibleCards, rememberedCards, forgottenCards]);
+
+            const handleLongPress = (cardToStudy) => {
+                const newDeck = [cardToStudy, ...deck.filter(c => c.key !== cardToStudy.key)];
+                setDeck(newDeck);
+                setVisibleCards(newDeck.slice(0, 3));
+                setCurrentPage('flashcards');
+            };
+            
+            const handleSelectDeck = (deckCode) => {
+                setSelectedDeckCode(deckCode);
+                setCurrentPage('deckDetail');
+            };
+
+            const resetApp = () => {
+                setCurrentPage('landing');
+                setCode('');
+                setDeck([]);
+                setVisibleCards([]);
+                setRememberedCards([]);
+                setForgottenCards([]);
+            };
+            
+            const CollectionPage = ({ title, cards, onBack, fallbackMessage, cardType }) => (
+                <div className="collection-page">
+                    <div className="top-nav w-full flex justify-between items-center">
+                        <button onClick={onBack} className="mobile-button" title={TRANSLATIONS["en-US"].backToStudy}><i className="fas fa-arrow-left text-2xl" /></button>
+                        <h2 className="text-2xl font-bold text-white">{title}</h2>
+                        <div className="w-12 h-12" />
+                    </div>
+                    {cards.length > 0 ? (
+                        <div className="collection-grid-wrapper">
+                            <div className="collection-grid">
+                                {cards.map((card) => (
+                                    cardType === 'remembered' 
+                                    ? <StaticSmallCard key={card.key} card={card} />
+                                    : <FlippableSmallCard key={card.key} card={card} onLongPress={handleLongPress} />
+                                ))}
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="flex-grow flex items-center justify-center">
+                            <p className="text-white text-center text-lg">{fallbackMessage}</p>
+                        </div>
+                    )}
+                </div>
+            );
+
+            const AllDecksPage=({ onBack, onSelectDeck })=> (
+                <div className="collection-page">
+                    <div className="top-nav w-full flex justify-between items-center">
+                        <button onClick={onBack} className="mobile-button" title={TRANSLATIONS["en-US"].backToStudy}><i className="fas fa-arrow-left text-2xl" /></button>
+                        <h2 className="text-2xl font-bold text-white">{TRANSLATIONS["en-US"].collection}</h2>
+                        <div className="w-12 h-12" />
+                    </div>
+                    <div className="collection-grid-wrapper">
+                        <div className="collection-grid">
+                            {Object.entries(ACCESS_CODES).map(([code, deckData]) => (
+                                <div key={code} onClick={() => onSelectDeck(code)} className="cursor-pointer">
+                                    <h3 className="text-white text-center font-bold mb-2">{deckData.title}</h3>
+                                    <StaticSmallCard card={deckData.sampleCard} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const DeckDetailPage = ({ deckCode, onBack }) => {
+                const deck = ACCESS_CODES[deckCode];
+                if (!deck) return null;
+                return (
+                    <CollectionPage 
+                        title={deck.title}
+                        cards={deck.cards}
+                        onBack={onBack}
+                        fallbackMessage="This deck is empty."
+                        cardType="remembered"
+                    />
+                );
+            };
+
+            const renderContent = () => { 
+                switch (currentPage) {
+                    case 'landing':
+                        return (
+                            <div className="mobile-center flex-col p-4">
+                                <div className="p-8 flex flex-col items-center gap-8 max-w-md w-full">
+                                    <h1 className="text-3xl font-extrabold text-white text-center drop-shadow-lg">{TRANSLATIONS["en-US"].flashcardsCode}</h1>
+                                    <p className="text-white text-lg text-center drop-shadow-md">{TRANSLATIONS["en-US"].landingPageSubtitle}</p>
+                                    <input type="text" placeholder={TRANSLATIONS["en-US"].pasteCodePlaceholder} className="w-full p-3 rounded-xl bg-gray-100 bg-opacity-70 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-400 transition duration-200 text-center text-lg text-gray-800" value={code} onChange={e=>setCode(e.target.value)} />
+                                    <SlideToUnlock onUnlock={handleCodeUnlock} />
+                                </div>
+                            </div>
+                        );
+                    case 'flashcards':
+                        if (visibleCards.length === 0) {
+                            return (
+                                <div className="mobile-center flex-col p-4">
+                                    <div className="watercolor-card p-8 flex flex-col items-center gap-6 max-w-md w-full text-center">
+                                        <h2 className="text-2xl font-bold text-gray-900">Deck Completed!</h2>
+                                        <p className="text-gray-700">You've gone through all the cards in this deck.</p>
+                                        <button onClick={resetApp} className="px-6 py-3 bg-blue-500 text-white rounded-full shadow-lg hover:bg-blue-600 transition duration-300">
+                                            {TRANSLATIONS["en-US"].createNewFlashcardsLink}
+                                        </button>
+                                        <button onClick={() => setCurrentPage('allDecks')} className="mt-2 px-6 py-3 bg-purple-500 text-white rounded-full shadow-lg hover:bg-purple-600 transition duration-300">
+                                            View All Decks
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div className="flashcard-page">
+                                <div className="top-nav w-full flex justify-end items-center space-x-2 sm:space-x-4">
+                                    <button onClick={() => setCurrentPage('remembered')} className="mobile-button" title={TRANSLATIONS["en-US"].rememberedCards}><i className="fas fa-check-double text-2xl"></i></button>
+                                    <button onClick={() => setCurrentPage('forgotten')} className="mobile-button" title={TRANSLATIONS["en-US"].forgottenCards}><i className="fas fa-question text-2xl"></i></button>
+                                    <button onClick={() => setCurrentPage('allDecks')} className="mobile-button" title={TRANSLATIONS["en-US"].collection}><i className="fas fa-layer-group text-2xl"></i></button>
+                                    <button onClick={resetApp} className="mobile-button" title={TRANSLATIONS["en-US"].createNewFlashcardsLink}><i className="fas fa-undo text-2xl"></i></button>
+                                </div>
+
+                                <div className="card-scene-wrapper">
+                                    <div className="card-scene">
+                                        {visibleCards.map((card, index) => (
+                                            <Flashcard 
+                                                key={card.key} 
+                                                card={card} 
+                                                onSwipe={handleSwipe} 
+                                                index={index} 
+                                            />
+                                        )).reverse()}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    case 'remembered':
+                        return <CollectionPage title={TRANSLATIONS["en-US"].rememberedCards} cards={rememberedCards} onBack={()=>setCurrentPage("flashcards")} fallbackMessage={TRANSLATIONS["en-US"].noCollectedCards} cardType="remembered" />;
+                    case 'forgotten':
+                        return <CollectionPage title={TRANSLATIONS["en-US"].forgottenCards} cards={forgottenCards} onBack={()=>setCurrentPage("flashcards")} fallbackMessage={TRANSLATIONS["en-US"].noCollectedCards} cardType="forgotten" />;
+                    case 'allDecks':
+                        return <AllDecksPage onBack={()=>setCurrentPage("flashcards")} onSelectDeck={handleSelectDeck} />;
+                    case 'deckDetail':
+                        return <DeckDetailPage deckCode={selectedDeckCode} onBack={() => setCurrentPage('allDecks')} />;
+                    default:
+                        return null;
+                }
+            };
+
+            return (
+                <div className="h-full">
+                    {renderContent()}
+                    <Modal isOpen={showErrorModal} onClose={() => setShowErrorModal(false)} title="Error" message={errorMessage} />
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
