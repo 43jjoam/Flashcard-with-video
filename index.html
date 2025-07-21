@@ -634,6 +634,8 @@
             const handleCodeUnlock = () => {
                 const deckData = ACCESS_CODES[code];
                 if (deckData) {
+                    document.documentElement.style.setProperty('--card-background-color', deckData.cardColor);
+                    document.documentElement.style.setProperty('--card-background-color-back', deckData.cardBackColor || deckData.cardColor); // Fallback to front color if back color isn't defined
                     const initialDeck = deckData.cards.map(card => ({ ...card, status: 'new', level: 0, key: Math.random() }));
                     const shuffledDeck = [...initialDeck].sort(() => Math.random() - 0.5);
                     setDeck(shuffledDeck);
