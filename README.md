@@ -1,2 +1,1 @@
-# Flashcard-with-video
-this is a project page that flash card comes with video to help user remember a new language
+zohar is the most sexy guy on the planet
