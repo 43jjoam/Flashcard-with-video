@@ -3,161 +3,191 @@ import { useSwipeable } from 'react-swipeable';
 import { motion, AnimatePresence } from 'framer-motion';
 import './App.css';
 
-// Sample flashcard data
-const sampleCards = [
+// Flashcard data from options.txt
+const flashcardData = [
   {
     id: 1,
     front: {
-      chinese: '你好',
-      pinyin: 'nǐ hǎo'
+      chinese: '爸爸',
+      pinyin: 'bàba'
     },
     back: {
-      english: 'Hello',
-      thai: 'สวัสดี'
-    },
-    score: 0,
-    consecutiveCorrect: 0,
-    consecutiveIncorrect: 0
+      english: 'dad',
+      thai: 'พ่อ'
+    }
   },
   {
     id: 2,
     front: {
-      chinese: '谢谢',
-      pinyin: 'xiè xie'
+      chinese: '别',
+      pinyin: 'bié'
     },
     back: {
-      english: 'Thank you',
-      thai: 'ขอบคุณ'
-    },
-    score: 0,
-    consecutiveCorrect: 0,
-    consecutiveIncorrect: 0
+      english: "don't",
+      thai: 'อย่า'
+    }
   },
   {
     id: 3,
     front: {
-      chinese: '再见',
-      pinyin: 'zài jiàn'
+      chinese: '朋友',
+      pinyin: 'péngyǒu'
     },
     back: {
-      english: 'Goodbye',
-      thai: 'ลาก่อน'
-    },
-    score: 0,
-    consecutiveCorrect: 0,
-    consecutiveIncorrect: 0
+      english: 'friend',
+      thai: 'เพื่อน'
+    }
   },
   {
     id: 4,
     front: {
-      chinese: '对不起',
-      pinyin: 'duì bù qǐ'
+      chinese: '怕',
+      pinyin: 'pà'
     },
     back: {
-      english: 'Sorry',
-      thai: 'ขอโทษ'
-    },
-    score: 0,
-    consecutiveCorrect: 0,
-    consecutiveIncorrect: 0
+      english: 'to fear',
+      thai: 'กลัว'
+    }
   },
   {
     id: 5,
     front: {
-      chinese: '没关系',
-      pinyin: 'méi guān xi'
+      chinese: '妈妈',
+      pinyin: 'māma'
     },
     back: {
-      english: "It's okay",
-      thai: 'ไม่เป็นไร'
+      english: 'mom',
+      thai: 'แม่'
+    }
+  },
+  {
+    id: 6,
+    front: {
+      chinese: '买',
+      pinyin: 'mǎi'
     },
-    score: 0,
-    consecutiveCorrect: 0,
-    consecutiveIncorrect: 0
+    back: {
+      english: 'to buy',
+      thai: 'ซื้อ'
+    }
+  },
+  {
+    id: 7,
+    front: {
+      chinese: '饭',
+      pinyin: 'fàn'
+    },
+    back: {
+      english: 'meal',
+      thai: 'อาหาร'
+    }
+  },
+  {
+    id: 8,
+    front: {
+      chinese: '富',
+      pinyin: 'fù'
+    },
+    back: {
+      english: 'rich',
+      thai: 'รวย'
+    }
+  },
+  {
+    id: 9,
+    front: {
+      chinese: '奶奶',
+      pinyin: 'nǎinai'
+    },
+    back: {
+      english: 'grandmother',
+      thai: 'ย่า'
+    }
+  },
+  {
+    id: 10,
+    front: {
+      chinese: '你',
+      pinyin: 'nǐ'
+    },
+    back: {
+      english: 'you',
+      thai: 'คุณ'
+    }
   }
 ];
 
 function App() {
-  const [cards, setCards] = useState(sampleCards);
+  const [cards] = useState(flashcardData);
   const [currentCardIndex, setCurrentCardIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState(null);
-
-  const currentCard = cards[currentCardIndex];
-
-  // Score calculation based on swipe direction
-  const updateCardScore = (direction) => {
-    setCards(prevCards => {
-      const updatedCards = [...prevCards];
-      const card = updatedCards[currentCardIndex];
-      
-      if (direction === 'right') {
-        // Correct answer
-        if (card.consecutiveCorrect === 0) {
-          card.score += 1;
-        } else if (card.consecutiveCorrect < 3) {
-          card.score += 2;
-        } else {
-          card.score += 3;
-        }
-        
-        if (card.consecutiveCorrect % 3 === 0) {
-          card.score += 1; // Streak bonus
-        }
-        
-        card.consecutiveCorrect++;
-        card.consecutiveIncorrect = 0;
-      } else {
-        // Incorrect answer
-        if (card.consecutiveIncorrect === 0) {
-          card.score -= 1;
-        } else {
-          card.score -= 2;
-        }
-        
-        card.consecutiveIncorrect++;
-        card.consecutiveCorrect = 0;
-      }
-      
-      return updatedCards;
-    });
-  };
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragX, setDragX] = useState(0);
+  const [dragY, setDragY] = useState(0);
+  const [swipeVelocity, setSwipeVelocity] = useState({ x: 0, y: 0 });
 
   // Handle swipe gestures
-  const handleSwipe = (direction) => {
+  const handleSwipe = (direction, velocity) => {
     setSwipeDirection(direction);
-    updateCardScore(direction);
+    setSwipeVelocity(velocity);
     
     // Move to next card after a short delay
     setTimeout(() => {
       setCurrentCardIndex(prev => (prev + 1) % cards.length);
       setIsFlipped(false);
       setSwipeDirection(null);
-    }, 500);
+      setDragX(0);
+      setDragY(0);
+      setSwipeVelocity({ x: 0, y: 0 });
+    }, 300);
   };
 
   const handlers = useSwipeable({
-    onSwipedLeft: () => handleSwipe('left'),
-    onSwipedRight: () => handleSwipe('right'),
+    onSwipedLeft: () => handleSwipe('left', { x: -1, y: 0 }),
+    onSwipedRight: () => handleSwipe('right', { x: 1, y: 0 }),
     preventDefaultTouchmoveEvent: true,
     trackMouse: true
   });
 
   // Handle card flip on click/tap
   const handleCardClick = () => {
-    setIsFlipped(!isFlipped);
+    if (!isDragging) {
+      setIsFlipped(!isFlipped);
+    }
   };
 
-  console.log(currentCard);
+  // Handle drag gestures
+  const handleDragEnd = (event, info) => {
+    setIsDragging(false);
+    const swipeThreshold = 100;
+    const velocity = { x: info.velocity.x, y: info.velocity.y };
+    
+    if (Math.abs(info.offset.x) > swipeThreshold) {
+      if (info.offset.x > 0) {
+        handleSwipe('right', velocity);
+      } else {
+        handleSwipe('left', velocity);
+      }
+    } else {
+      setDragX(0);
+      setDragY(0);
+    }
+  };
+
+  const handleDrag = (event, info) => {
+    setDragX(info.offset.x);
+    setDragY(info.offset.y);
+  };
+
+  const handleDragStart = () => {
+    setIsDragging(true);
+  };
 
   return (
     <div className="App">
       <div className="header">
         <h1>中文 Flashcards</h1>
-        <div className="stats">
-          <span>Card {currentCardIndex + 1} of {cards.length}</span>
-          <span>Score: {currentCard.score}</span>
-        </div>
       </div>
 
       <div className="flashcard-container" {...handlers}>
@@ -165,67 +195,80 @@ function App() {
           <motion.div
             key={currentCardIndex}
             className="flashcard"
-            initial={{ opacity: 0, x: swipeDirection === 'left' ? -300 : 300 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: swipeDirection === 'left' ? 300 : -300 }}
-            transition={{ duration: 0.3 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ 
+              opacity: 1, 
+              x: 0, 
+              y: 0,
+              scale: 1,
+              rotateZ: 0
+            }}
+            transition={{ 
+              duration: 0.3, 
+              ease: "easeOut"
+            }}
+            drag={true}
+            onDrag={handleDrag}
+            style={{
+              rotateZ: Math.atan2(dragY, dragX) * (180 / Math.PI) * 0.2,
+              x: dragX,
+              y: dragY,
+            }}
             onClick={handleCardClick}
           >
             <motion.div
               className="card-content"
-              animate={{ rotateY: isFlipped ? 180 : 0 }}
-              transition={{ duration: 0.6, ease: "easeInOut" }}
               style={{ transformStyle: "preserve-3d" }}
             >
               {/* Front of card */}
-              <motion.div 
-                className="card-front"
-                style={{ 
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden"
-                }}
-              >
-                <div className="chinese-content">
-                  <p className="pinyin-front">{currentCard.front.pinyin}</p>
-                  <h2 className="chinese-character">{currentCard.front.chinese}</h2>
-                </div>
-                <p className="hint">Tap to flip</p>
-              </motion.div>
+              {!isFlipped && (
+                <motion.div 
+                  className="card-front"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ 
+                    backfaceVisibility: "hidden",
+                    WebkitBackfaceVisibility: "hidden"
+                  }}
+                >
+                  <div className="card-content-inner">
+                    <p className="card-subtitle" style={{ fontSize: '3.5rem' }}>{cards[currentCardIndex].front.chinese}</p>
+                    <h2 className="card-main" style={{ fontSize: '2.0rem' }}>{cards[currentCardIndex].front.pinyin}</h2>
+                    <h2 className="card-main">🎃</h2>
+                  </div>
+                  <p className="hint">Tap to flip</p>
+                </motion.div>
+              )}
 
               {/* Back of card */}
-              <motion.div 
-                className="card-back"
-                style={{ 
-                  backfaceVisibility: "hidden",
-                  WebkitBackfaceVisibility: "hidden",
-                  transform: "rotateY(180deg)"
-                }}
-              >
-                <div className="translations">
-                  <p className="english">{currentCard.back.english}</p>
-                  <p className="thai">{currentCard.back.thai}</p>
-                </div>
-              </motion.div>
+              {isFlipped && (
+                <motion.div 
+                  className="card-back"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  style={{ 
+                    backfaceVisibility: "hidden",
+                    WebkitBackfaceVisibility: "hidden",
+                    // transform: "rotateY(180deg)"
+                  }}
+                >
+                  <div className="card-content-inner">
+                    <p className="card-subtitle">{cards[currentCardIndex].back.english}</p>
+                    <h2 className="card-main" style={{ fontSize: '2.0rem' }}>{cards[currentCardIndex].back.thai}</h2>
+                    <h2 className="card-main">🎃</h2>
+                  </div>
+                  <p className="hint">Tap to flip</p>
+                </motion.div>
+              )}
             </motion.div>
           </motion.div>
         </AnimatePresence>
       </div>
 
-      <div className="swipe-instructions">
-        <div className="instruction">
-          <span className="arrow left">←</span>
-          <span>Don't know</span>
-        </div>
-        <div className="instruction">
-          <span>Know it</span>
-          <span className="arrow right">→</span>
-        </div>
-      </div>
-
-      <div className="score-info">
-        <p>Current Score: {currentCard.score}</p>
-        <p>Streak: {currentCard.consecutiveCorrect} correct</p>
-      </div>
     </div>
   );
 }
