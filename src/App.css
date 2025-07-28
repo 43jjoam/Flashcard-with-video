@@ -1,0 +1,327 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 30px;
+  width: 100%;
+  max-width: 400px;
+}
+
+.header h1 {
+  color: white;
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 15px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  background: linear-gradient(45deg, #ff6b9d, #c44569);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.stats {
+  display: flex;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 15px 20px;
+  color: white;
+  font-weight: 500;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.flashcard-container {
+  width: 100%;
+  max-width: 400px;
+  height: 500px;
+  position: relative;
+  margin-bottom: 30px;
+}
+
+.flashcard {
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+  perspective: 1000px;
+}
+
+.card-content {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.card-front,
+.card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 30px;
+  border-radius: 20px;
+  color: white;
+  text-align: center;
+  overflow: hidden;
+}
+
+.card-front {
+  background: linear-gradient(145deg, #ff6b9d, #c44569);
+}
+
+.card-back {
+  background: linear-gradient(145deg, #a55eea, #8854d0);
+}
+
+.chinese-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-grow: 1;
+}
+
+.pinyin-front {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #f8f9fa;
+  margin-bottom: 10px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.chinese-character {
+  font-size: 4rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  font-family: 'PingFang SC', 'Noto Sans SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', 'SimSun', '宋体', sans-serif;
+}
+
+.hint {
+  font-size: 1rem;
+  opacity: 0.8;
+  font-weight: 400;
+}
+
+.translations {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  width: 100%;
+}
+
+.english {
+  font-size: 2rem;
+  font-weight: 600;
+  color: #f8f9fa;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 15px 20px;
+  border-radius: 15px;
+  backdrop-filter: blur(5px);
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.thai {
+  font-size: 1.8rem;
+  font-weight: 500;
+  color: #e9ecef;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 12px 18px;
+  border-radius: 12px;
+  text-align: center;
+  font-family: 'Noto Sans Thai', 'Tahoma', 'Arial', sans-serif;
+}
+
+.swipe-instructions {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 400px;
+  margin-bottom: 20px;
+}
+
+.instruction {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: white;
+  font-weight: 500;
+  font-size: 0.9rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 10px 15px;
+  border-radius: 25px;
+  backdrop-filter: blur(10px);
+}
+
+.arrow {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.arrow.left {
+  color: #ff6b6b;
+}
+
+.arrow.right {
+  color: #51cf66;
+}
+
+.score-info {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 20px;
+  color: white;
+  text-align: center;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.score-info p {
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.score-info p:last-child {
+  margin-bottom: 0;
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .App {
+    padding: 15px;
+  }
+  
+  .header h1 {
+    font-size: 2rem;
+  }
+  
+  .flashcard-container {
+    height: 450px;
+  }
+  
+  .chinese-character {
+    font-size: 3rem;
+  }
+  
+  .pinyin-front {
+    font-size: 1.3rem;
+  }
+  
+  .english {
+    font-size: 1.6rem;
+  }
+  
+  .thai {
+    font-size: 1.4rem;
+  }
+  
+  .swipe-instructions {
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  .instruction {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 481px) and (max-width: 768px) {
+  .flashcard-container {
+    height: 550px;
+  }
+  
+  .chinese-character {
+    font-size: 4.5rem;
+  }
+  
+  .pinyin-front {
+    font-size: 1.8rem;
+  }
+}
+
+/* Desktop optimizations */
+@media (min-width: 769px) {
+  .flashcard-container {
+    height: 600px;
+  }
+  
+  .chinese-character {
+    font-size: 5rem;
+  }
+  
+  .pinyin-front {
+    font-size: 2rem;
+  }
+}
+
+/* Smooth transitions for all interactive elements */
+.flashcard,
+.instruction,
+.stats,
+.score-info {
+  transition: all 0.3s ease;
+}
+
+.flashcard:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+}
+
+.instruction:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+/* Loading animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.App > * {
+  animation: fadeIn 0.6s ease-out;
+}
