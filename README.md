@@ -2,6 +2,10 @@
 
 A React-based flashcard application for learning Chinese vocabulary with Thai translations. Features include text-to-speech pronunciation, card flipping animations, spaced repetition tracking, and multiple deck support.
 
+> **Note**: This repository contains two versions of the flashcard app:
+> - **Main branch (this version)**: Vanilla HTML/JS with modular structure - simple, lightweight, works directly in browser
+> - **React version**: Modern React app with enhanced features (available in separate commits)
+
 ## File Structure
 
 The application has been refactored from a single HTML file into a modular structure:
@@ -27,6 +31,10 @@ flashcards/
 - **Responsive Design**: Works on mobile and desktop devices
 - **Spaced Repetition**: Cards reappear based on learning progress
 
+## Quick Start
+
+Simply open `index.html` in your browser - no installation required!
+
 ## Deck Codes
 
 - `LearnChinesewithHelen1295` - Chinese Vocabulary (30 cards)
@@ -35,7 +43,7 @@ flashcards/
 ## Technical Details
 
 ### Dependencies
-- React 18.2.0 (Production build)
+- React 18.2.0 (Production build via CDN)
 - React DOM 18.2.0
 - Babel Standalone 7.23.5
 - Tailwind CSS (CDN)
